@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { useData } from '../context/DataContext.jsx'
 import { computeVehicleMetrics } from '../lib/calculations.js'
-import { formatCostPerKm, formatKm } from '../utils/format.js'
+import { formatCostPerKm, formatKm, STATUS_LABELS } from '../utils/format.js'
 import Modal from '../components/Modal.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import { StatusBadge, GroupBadge } from '../components/Badge.jsx'
 
 const emptyForm = {
   make: '',
@@ -20,6 +21,8 @@ const emptyForm = {
   annualTax: '',
   initialOdometer: 0,
   currentOdometer: 0,
+  status: 'in_service',
+  groupId: '',
 }
 
 function FormField({ label, children }) {
@@ -35,9 +38,11 @@ const inputClass =
   'mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300'
 
 export default function Vehicles() {
-  const { vehicles, costLogs, settings, addVehicle, deleteVehicle } = useData()
+  const { vehicles, groups, costLogs, settings, addVehicle, deleteVehicle } = useData()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [groupFilter, setGroupFilter] = useState('all')
 
   function handleChange(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -55,10 +60,19 @@ export default function Vehicles() {
       annualTax: Number(form.annualTax) || 0,
       initialOdometer: Number(form.initialOdometer) || 0,
       currentOdometer: Number(form.currentOdometer) || 0,
+      groupId: form.groupId || null,
     })
     setForm(emptyForm)
     setOpen(false)
   }
+
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter((v) => {
+      if (statusFilter !== 'all' && v.status !== statusFilter) return false
+      if (groupFilter !== 'all' && (v.groupId || '') !== groupFilter) return false
+      return true
+    })
+  }, [vehicles, statusFilter, groupFilter])
 
   return (
     <div className="space-y-5">
@@ -74,6 +88,36 @@ export default function Vehicles() {
           <Plus size={16} /> Add vehicle
         </button>
       </div>
+
+      {vehicles.length > 0 && (
+        <div className="flex items-center gap-3">
+          <select
+            className="text-sm rounded-lg border border-line px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="text-sm rounded-lg border border-line px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+          >
+            <option value="all">All groups</option>
+            <option value="">No group</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {vehicles.length === 0 ? (
         <EmptyState
@@ -92,14 +136,17 @@ export default function Vehicles() {
               <tr className="text-left text-xs uppercase tracking-wide text-ink/40 bg-surface">
                 <th className="px-4 py-3 font-normal">Vehicle</th>
                 <th className="px-4 py-3 font-normal">Plate</th>
+                <th className="px-4 py-3 font-normal">Status</th>
+                <th className="px-4 py-3 font-normal">Group</th>
                 <th className="px-4 py-3 font-normal">Odometer</th>
                 <th className="px-4 py-3 font-normal text-right">Cost / km</th>
                 <th className="px-4 py-3 font-normal w-10"></th>
               </tr>
             </thead>
             <tbody>
-              {vehicles.map((vehicle) => {
+              {filteredVehicles.map((vehicle) => {
                 const metrics = computeVehicleMetrics(vehicle, costLogs)
+                const group = groups.find((g) => g.id === vehicle.groupId)
                 return (
                   <tr key={vehicle.id} className="border-t border-line hover:bg-surface/60">
                     <td className="px-4 py-3">
@@ -109,6 +156,12 @@ export default function Vehicles() {
                       <div className="text-xs text-ink/45">{vehicle.year}</div>
                     </td>
                     <td className="px-4 py-3 text-ink/70">{vehicle.plate || '—'}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={vehicle.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <GroupBadge group={group} />
+                    </td>
                     <td className="px-4 py-3 meter text-ink/70">{formatKm(vehicle.currentOdometer)}</td>
                     <td className="px-4 py-3 text-right meter font-semibold text-primary-700">
                       {formatCostPerKm(metrics.costPerKm, settings.currency)}
@@ -147,6 +200,25 @@ export default function Vehicles() {
           </FormField>
           <FormField label="License plate">
             <input className={inputClass} value={form.plate} onChange={(e) => handleChange('plate', e.target.value)} />
+          </FormField>
+          <FormField label="Status">
+            <select className={inputClass} value={form.status} onChange={(e) => handleChange('status', e.target.value)}>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Group">
+            <select className={inputClass} value={form.groupId} onChange={(e) => handleChange('groupId', e.target.value)}>
+              <option value="">No group</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
           </FormField>
           <FormField label="Purchase date">
             <input type="date" required className={inputClass} value={form.purchaseDate} onChange={(e) => handleChange('purchaseDate', e.target.value)} />

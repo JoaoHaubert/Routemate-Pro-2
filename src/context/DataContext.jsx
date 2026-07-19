@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { loadFromStorage, saveToStorage } from '../lib/storage.js'
-import { seedVehicles, seedDrivers, seedCostLogs, defaultSettings } from '../lib/seedData.js'
+import { seedVehicles, seedGroups, seedDrivers, seedCostLogs, defaultSettings } from '../lib/seedData.js'
 
 const DataContext = createContext(null)
 
@@ -10,17 +10,22 @@ function makeId(prefix) {
 
 export function DataProvider({ children }) {
   const [vehicles, setVehicles] = useState(() => loadFromStorage('vehicles', seedVehicles))
+  const [groups, setGroups] = useState(() => loadFromStorage('groups', seedGroups))
   const [drivers, setDrivers] = useState(() => loadFromStorage('drivers', seedDrivers))
   const [costLogs, setCostLogs] = useState(() => loadFromStorage('costLogs', seedCostLogs))
   const [settings, setSettings] = useState(() => loadFromStorage('settings', defaultSettings))
 
   useEffect(() => saveToStorage('vehicles', vehicles), [vehicles])
+  useEffect(() => saveToStorage('groups', groups), [groups])
   useEffect(() => saveToStorage('drivers', drivers), [drivers])
   useEffect(() => saveToStorage('costLogs', costLogs), [costLogs])
   useEffect(() => saveToStorage('settings', settings), [settings])
 
   const addVehicle = useCallback((vehicle) => {
-    setVehicles((prev) => [...prev, { ...vehicle, id: makeId('v'), status: 'active' }])
+    setVehicles((prev) => [
+      ...prev,
+      { status: 'in_service', groupId: null, ...vehicle, id: makeId('v') },
+    ])
   }, [])
 
   const updateVehicle = useCallback((id, patch) => {
@@ -31,6 +36,19 @@ export function DataProvider({ children }) {
     setVehicles((prev) => prev.filter((v) => v.id !== id))
     setCostLogs((prev) => prev.filter((c) => c.vehicleId !== id))
     setDrivers((prev) => prev.map((d) => (d.vehicleId === id ? { ...d, vehicleId: null } : d)))
+  }, [])
+
+  const addGroup = useCallback((group) => {
+    setGroups((prev) => [...prev, { ...group, id: makeId('g') }])
+  }, [])
+
+  const updateGroup = useCallback((id, patch) => {
+    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, ...patch } : g)))
+  }, [])
+
+  const deleteGroup = useCallback((id) => {
+    setGroups((prev) => prev.filter((g) => g.id !== id))
+    setVehicles((prev) => prev.map((v) => (v.groupId === id ? { ...v, groupId: null } : v)))
   }, [])
 
   const addDriver = useCallback((driver) => {
@@ -71,12 +89,16 @@ export function DataProvider({ children }) {
 
   const value = {
     vehicles,
+    groups,
     drivers,
     costLogs,
     settings,
     addVehicle,
     updateVehicle,
     deleteVehicle,
+    addGroup,
+    updateGroup,
+    deleteGroup,
     addDriver,
     updateDriver,
     deleteDriver,

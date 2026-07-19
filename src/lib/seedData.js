@@ -17,7 +17,8 @@ export const seedVehicles = [
     annualTax: 190,
     initialOdometer: 12,
     currentOdometer: 68450,
-    status: 'active',
+    status: 'in_service',
+    groupId: 'g2',
   },
   {
     id: 'v2',
@@ -33,7 +34,8 @@ export const seedVehicles = [
     annualTax: 210,
     initialOdometer: 8,
     currentOdometer: 101200,
-    status: 'active',
+    status: 'in_service',
+    groupId: 'g2',
   },
   {
     id: 'v3',
@@ -49,7 +51,8 @@ export const seedVehicles = [
     annualTax: 420,
     initialOdometer: 5,
     currentOdometer: 154300,
-    status: 'active',
+    status: 'maintenance',
+    groupId: 'g1',
   },
   {
     id: 'v4',
@@ -65,8 +68,14 @@ export const seedVehicles = [
     annualTax: 120,
     initialOdometer: 10,
     currentOdometer: 24100,
-    status: 'active',
+    status: 'idle',
+    groupId: null,
   },
+]
+
+export const seedGroups = [
+  { id: 'g1', name: 'Chemical Transport', color: '#993C1D' },
+  { id: 'g2', name: 'General Delivery', color: '#0F6E56' },
 ]
 
 export const seedDrivers = [

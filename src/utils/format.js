@@ -32,3 +32,24 @@ export const CATEGORY_LABELS = {
   cleaning: 'Cleaning',
   other: 'Other',
 }
+
+export const STATUS_LABELS = {
+  in_service: 'In service',
+  idle: 'Idle',
+  maintenance: 'Maintenance',
+}
+
+export const STATUS_STYLES = {
+  in_service: 'bg-primary-50 text-primary-700',
+  idle: 'bg-surface text-ink/50 border border-line',
+  maintenance: 'bg-clay-100 text-clay-600',
+}
+
+export const GROUP_COLOR_SWATCHES = [
+  '#0F6E56', // primary green
+  '#A85E20', // clay
+  '#993C1D', // rust
+  '#4B5563', // slate
+  '#6B4C8A', // plum
+  '#2C7A7B', // teal
+]

@@ -3,15 +3,16 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Printer } from 'lucide-react'
 import { useData } from '../context/DataContext.jsx'
 import { computeVehicleMetrics, computeCostPerKmSeries, annualDepreciation } from '../lib/calculations.js'
-import { formatCurrency, formatCostPerKm, formatKm, formatDate, CATEGORY_LABELS } from '../utils/format.js'
+import { formatCurrency, formatCostPerKm, formatKm, formatDate, CATEGORY_LABELS, STATUS_LABELS } from '../utils/format.js'
 import StatCard from '../components/StatCard.jsx'
 import CostTrendChart from '../components/CostTrendChart.jsx'
 import CostBreakdownChart from '../components/CostBreakdownChart.jsx'
+import { StatusBadge, GroupBadge } from '../components/Badge.jsx'
 
 export default function VehicleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { vehicles, drivers, costLogs, settings, updateVehicle } = useData()
+  const { vehicles, groups, drivers, costLogs, settings, updateVehicle } = useData()
   const [editing, setEditing] = useState(false)
 
   const vehicle = vehicles.find((v) => v.id === id)
@@ -30,6 +31,7 @@ export default function VehicleDetail() {
   const series = computeCostPerKmSeries(vehicle, costLogs)
   const depreciation = annualDepreciation(vehicle)
   const driver = drivers.find((d) => d.vehicleId === vehicle.id)
+  const group = groups.find((g) => g.id === vehicle.groupId)
   const logs = costLogs
     .filter((l) => l.vehicleId === vehicle.id)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -57,9 +59,13 @@ export default function VehicleDetail() {
       </div>
 
       <div>
-        <h1 className="text-xl font-semibold">
-          {vehicle.make} {vehicle.model} <span className="text-ink/40 font-normal">· {vehicle.year}</span>
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">
+            {vehicle.make} {vehicle.model} <span className="text-ink/40 font-normal">· {vehicle.year}</span>
+          </h1>
+          <StatusBadge status={vehicle.status} />
+          <GroupBadge group={group} />
+        </div>
         <p className="text-sm text-ink/50 mt-0.5">
           {vehicle.plate || 'No plate on file'} {driver && <>· driven by {driver.fullName}</>}
         </p>
@@ -97,6 +103,7 @@ export default function VehicleDetail() {
       {editing && (
         <VehicleEditForm
           vehicle={vehicle}
+          groups={groups}
           onSave={(patch) => {
             updateVehicle(vehicle.id, patch)
             setEditing(false)
@@ -190,7 +197,7 @@ export default function VehicleDetail() {
 const inputClass =
   'mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300'
 
-function VehicleEditForm({ vehicle, onSave, onCancel }) {
+function VehicleEditForm({ vehicle, groups, onSave, onCancel }) {
   const [form, setForm] = useState({
     purchasePrice: vehicle.purchasePrice,
     residualValue: vehicle.residualValue,
@@ -198,6 +205,8 @@ function VehicleEditForm({ vehicle, onSave, onCancel }) {
     annualInsurance: vehicle.annualInsurance,
     annualTax: vehicle.annualTax,
     currentOdometer: vehicle.currentOdometer,
+    status: vehicle.status,
+    groupId: vehicle.groupId || '',
   })
 
   function handleChange(field, value) {
@@ -213,11 +222,34 @@ function VehicleEditForm({ vehicle, onSave, onCancel }) {
       annualInsurance: Number(form.annualInsurance) || 0,
       annualTax: Number(form.annualTax) || 0,
       currentOdometer: Number(form.currentOdometer) || 0,
+      status: form.status,
+      groupId: form.groupId || null,
     })
   }
 
   return (
     <form onSubmit={handleSubmit} className="card p-5 grid grid-cols-2 sm:grid-cols-3 gap-4 no-print">
+      <label className="block">
+        <span className="text-xs text-ink/50">Status</span>
+        <select className={inputClass} value={form.status} onChange={(e) => handleChange('status', e.target.value)}>
+          {Object.entries(STATUS_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block">
+        <span className="text-xs text-ink/50">Group</span>
+        <select className={inputClass} value={form.groupId} onChange={(e) => handleChange('groupId', e.target.value)}>
+          <option value="">No group</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="block">
         <span className="text-xs text-ink/50">Price paid</span>
         <input type="number" step="0.01" className={inputClass} value={form.purchasePrice} onChange={(e) => handleChange('purchasePrice', e.target.value)} />

@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useData } from '../context/DataContext.jsx'
 import { clearAllStorage } from '../lib/storage.js'
+import { GROUP_COLOR_SWATCHES } from '../utils/format.js'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300'
@@ -8,9 +10,19 @@ const inputClass =
 const CURRENCIES = ['EUR', 'USD', 'GBP']
 
 export default function Settings() {
-  const { settings, updateSettings } = useData()
+  const { settings, updateSettings, vehicles, groups, addGroup, updateGroup, deleteGroup } = useData()
   const [form, setForm] = useState(settings)
   const [saved, setSaved] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [newGroupColor, setNewGroupColor] = useState(GROUP_COLOR_SWATCHES[0])
+
+  function handleAddGroup(e) {
+    e.preventDefault()
+    if (!newGroupName.trim()) return
+    addGroup({ name: newGroupName.trim(), color: newGroupColor })
+    setNewGroupName('')
+    setNewGroupColor(GROUP_COLOR_SWATCHES[0])
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -70,6 +82,75 @@ export default function Settings() {
           {saved && <span className="text-xs text-primary-600">Saved</span>}
         </div>
       </form>
+
+      <div className="card p-5">
+        <h2 className="text-sm font-medium mb-1">Vehicle groups</h2>
+        <p className="text-xs text-ink/50 mb-3">
+          Group vehicles by fleet role, e.g. a group for trucks that constantly haul chemicals. Assign a vehicle to
+          a group from the vehicle's own page or the add-vehicle form.
+        </p>
+
+        {groups.length > 0 && (
+          <ul className="space-y-2 mb-4">
+            {groups.map((g) => {
+              const count = vehicles.filter((v) => v.groupId === g.id).length
+              return (
+                <li key={g.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-line">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                    <input
+                      className="text-sm bg-transparent focus:outline-none min-w-0"
+                      value={g.name}
+                      onChange={(e) => updateGroup(g.id, { name: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-ink/45">{count} vehicle{count === 1 ? '' : 's'}</span>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Remove group "${g.name}"? Vehicles keep their data but lose this group.`)) {
+                          deleteGroup(g.id)
+                        }
+                      }}
+                      className="text-ink/30 hover:text-alert-600 transition-colors"
+                      aria-label={`Delete group ${g.name}`}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        <form onSubmit={handleAddGroup} className="flex items-center gap-2">
+          <input
+            className={`${inputClass} mt-0 flex-1`}
+            placeholder="New group name"
+            value={newGroupName}
+            onChange={(e) => setNewGroupName(e.target.value)}
+          />
+          <div className="flex items-center gap-1">
+            {GROUP_COLOR_SWATCHES.map((color) => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => setNewGroupColor(color)}
+                className={`w-6 h-6 rounded-full shrink-0 ${newGroupColor === color ? 'ring-2 ring-offset-1 ring-ink/60' : ''}`}
+                style={{ backgroundColor: color }}
+                aria-label={`Choose color ${color}`}
+              />
+            ))}
+          </div>
+          <button
+            type="submit"
+            className="flex items-center gap-1 text-sm px-3 py-2 rounded-lg bg-primary-600 text-white font-medium hover:bg-primary-700 shrink-0"
+          >
+            <Plus size={14} /> Add
+          </button>
+        </form>
+      </div>
 
       <div className="card p-5">
         <h2 className="text-sm font-medium mb-1">Local data</h2>
