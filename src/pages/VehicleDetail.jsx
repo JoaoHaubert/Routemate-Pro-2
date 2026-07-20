@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Printer } from 'lucide-react'
 import { useData } from '../context/DataContext.jsx'
 import { computeVehicleMetrics, computeCostPerKmSeries, annualDepreciation } from '../lib/calculations.js'
-import { formatCurrency, formatCostPerKm, formatKm, formatDate, CATEGORY_LABELS, STATUS_LABELS } from '../utils/format.js'
+import { formatCurrency, formatCostPerKm, formatKm, formatDate, CATEGORY_LABELS, STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../utils/format.js'
 import StatCard from '../components/StatCard.jsx'
 import CostTrendChart from '../components/CostTrendChart.jsx'
 import CostBreakdownChart from '../components/CostBreakdownChart.jsx'
@@ -127,6 +127,10 @@ export default function VehicleDetail() {
         <h2 className="text-sm font-medium mb-3">Fixed cost assumptions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
+            <div className="text-xs text-ink/45">Type</div>
+            <div className="meter mt-0.5">{VEHICLE_TYPE_LABELS[vehicle.type] || '—'}</div>
+          </div>
+          <div>
             <div className="text-xs text-ink/45">Price paid</div>
             <div className="meter mt-0.5">{formatCurrency(vehicle.purchasePrice, settings.currency)}</div>
           </div>
@@ -199,6 +203,7 @@ const inputClass =
 
 function VehicleEditForm({ vehicle, groups, onSave, onCancel }) {
   const [form, setForm] = useState({
+    type: vehicle.type || 'car',
     purchasePrice: vehicle.purchasePrice,
     residualValue: vehicle.residualValue,
     usefulLifeYears: vehicle.usefulLifeYears,
@@ -216,6 +221,7 @@ function VehicleEditForm({ vehicle, groups, onSave, onCancel }) {
   function handleSubmit(e) {
     e.preventDefault()
     onSave({
+      type: form.type,
       purchasePrice: Number(form.purchasePrice) || 0,
       residualValue: Number(form.residualValue) || 0,
       usefulLifeYears: Number(form.usefulLifeYears) || 1,
@@ -229,6 +235,16 @@ function VehicleEditForm({ vehicle, groups, onSave, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="card p-5 grid grid-cols-2 sm:grid-cols-3 gap-4 no-print">
+      <label className="block">
+        <span className="text-xs text-ink/50">Type</span>
+        <select className={inputClass} value={form.type} onChange={(e) => handleChange('type', e.target.value)}>
+          {Object.entries(VEHICLE_TYPE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="block">
         <span className="text-xs text-ink/50">Status</span>
         <select className={inputClass} value={form.status} onChange={(e) => handleChange('status', e.target.value)}>

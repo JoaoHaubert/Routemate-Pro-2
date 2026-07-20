@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
-import { Gauge, Car, Users, Receipt, Settings as SettingsIcon, Calculator } from 'lucide-react'
+import { Gauge, Car, Users, Receipt, Settings as SettingsIcon, Calculator, LogOut } from 'lucide-react'
 import { useData } from '../context/DataContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: Gauge, end: true },
@@ -12,6 +13,7 @@ const links = [
 
 export default function Sidebar({ onOpenEstimate }) {
   const { settings } = useData()
+  const { signOut } = useAuth()
 
   return (
     <aside className="w-60 shrink-0 bg-ink text-white/90 flex flex-col no-print">
@@ -47,6 +49,13 @@ export default function Sidebar({ onOpenEstimate }) {
           Trip estimate
         </button>
       </div>
+      <button
+        onClick={signOut}
+        className="mx-3 mb-3 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+      >
+        <LogOut size={17} strokeWidth={2} />
+        Sign out
+      </button>
       <div className="px-5 py-4 border-t border-white/10 text-xs text-white/40">
         Cost per km, tracked per vehicle.
       </div>

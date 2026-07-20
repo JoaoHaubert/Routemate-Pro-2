@@ -33,6 +33,17 @@ export const CATEGORY_LABELS = {
   other: 'Other',
 }
 
+export const VEHICLE_TYPE_LABELS = {
+  car: 'Car',
+  suv: 'SUV',
+  van: 'Van',
+  pickup_truck: 'Pickup truck',
+  truck: 'Truck',
+  taxi: 'Taxi',
+  motorcycle: 'Motorcycle',
+  other: 'Other',
+}
+
 export const STATUS_LABELS = {
   in_service: 'In service',
   idle: 'Idle',

@@ -2,6 +2,7 @@
 // where the data ultimately comes from (mock data today, Supabase later).
 
 const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365
+const MS_PER_DAY = 1000 * 60 * 60 * 24
 
 export function yearsSince(dateString, asOf = new Date()) {
   const start = new Date(dateString)
@@ -68,6 +69,25 @@ export function computeCostPerKmSeries(vehicle, costLogs) {
       const costPerKm = (cumulativeVariable + fixedToDate) / km
       return { date: l.date, costPerKm, km }
     })
+}
+
+// Cost incurred between a vehicle's last odometer checkpoint and a new
+// reading — what the driver mobile app shows right after "Update odometer".
+export function computeIntervalCost(vehicle, costLogs, toOdometer, toDate = new Date()) {
+  const fromDate = new Date(vehicle.lastOdometerUpdateAt || vehicle.purchaseDate)
+  const fromOdometer = vehicle.lastOdometerUpdateValue ?? vehicle.initialOdometer
+
+  const variableCost = vehicleCostLogs(vehicle.id, costLogs)
+    .filter((l) => new Date(l.date) > fromDate)
+    .reduce((sum, l) => sum + Number(l.amount), 0)
+
+  const days = Math.max((toDate - fromDate) / MS_PER_DAY, 1 / 24)
+  const fixedCost = annualFixedCost(vehicle) * (days / 365)
+  const totalCost = variableCost + fixedCost
+  const km = Math.max(toOdometer - fromOdometer, 0)
+  const costPerKm = km > 0 ? totalCost / km : 0
+
+  return { km, days, variableCost, fixedCost, totalCost, costPerKm }
 }
 
 // Fleet-wide rollup for the dashboard.

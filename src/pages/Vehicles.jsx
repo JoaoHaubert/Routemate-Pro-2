@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { useData } from '../context/DataContext.jsx'
 import { computeVehicleMetrics } from '../lib/calculations.js'
-import { formatCostPerKm, formatKm, STATUS_LABELS } from '../utils/format.js'
+import { formatCostPerKm, formatKm, STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../utils/format.js'
 import Modal from '../components/Modal.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
 import { StatusBadge, GroupBadge } from '../components/Badge.jsx'
 
+const PAGE_SIZE = 25
+
 const emptyForm = {
+  type: 'car',
   make: '',
   model: '',
   year: new Date().getFullYear(),
@@ -43,6 +47,8 @@ export default function Vehicles() {
   const [form, setForm] = useState(emptyForm)
   const [statusFilter, setStatusFilter] = useState('all')
   const [groupFilter, setGroupFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [page, setPage] = useState(1)
 
   function handleChange(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -70,9 +76,21 @@ export default function Vehicles() {
     return vehicles.filter((v) => {
       if (statusFilter !== 'all' && v.status !== statusFilter) return false
       if (groupFilter !== 'all' && (v.groupId || '') !== groupFilter) return false
+      if (typeFilter !== 'all' && (v.type || '') !== typeFilter) return false
       return true
     })
-  }, [vehicles, statusFilter, groupFilter])
+  }, [vehicles, statusFilter, groupFilter, typeFilter])
+
+  function handleFilterChange(setter) {
+    return (value) => {
+      setter(value)
+      setPage(1)
+    }
+  }
+
+  const pageCount = Math.max(Math.ceil(filteredVehicles.length / PAGE_SIZE), 1)
+  const currentPage = Math.min(page, pageCount)
+  const pagedVehicles = filteredVehicles.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <div className="space-y-5">
@@ -93,8 +111,20 @@ export default function Vehicles() {
         <div className="flex items-center gap-3">
           <select
             className="text-sm rounded-lg border border-line px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            value={typeFilter}
+            onChange={(e) => handleFilterChange(setTypeFilter)(e.target.value)}
+          >
+            <option value="all">All types</option>
+            {Object.entries(VEHICLE_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="text-sm rounded-lg border border-line px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => handleFilterChange(setStatusFilter)(e.target.value)}
           >
             <option value="all">All statuses</option>
             {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -106,7 +136,7 @@ export default function Vehicles() {
           <select
             className="text-sm rounded-lg border border-line px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-300"
             value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
+            onChange={(e) => handleFilterChange(setGroupFilter)(e.target.value)}
           >
             <option value="all">All groups</option>
             <option value="">No group</option>
@@ -135,6 +165,7 @@ export default function Vehicles() {
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-ink/40 bg-surface">
                 <th className="px-4 py-3 font-normal">Vehicle</th>
+                <th className="px-4 py-3 font-normal">Type</th>
                 <th className="px-4 py-3 font-normal">Plate</th>
                 <th className="px-4 py-3 font-normal">Status</th>
                 <th className="px-4 py-3 font-normal">Group</th>
@@ -144,7 +175,7 @@ export default function Vehicles() {
               </tr>
             </thead>
             <tbody>
-              {filteredVehicles.map((vehicle) => {
+              {pagedVehicles.map((vehicle) => {
                 const metrics = computeVehicleMetrics(vehicle, costLogs)
                 const group = groups.find((g) => g.id === vehicle.groupId)
                 return (
@@ -155,6 +186,7 @@ export default function Vehicles() {
                       </Link>
                       <div className="text-xs text-ink/45">{vehicle.year}</div>
                     </td>
+                    <td className="px-4 py-3 text-ink/70">{VEHICLE_TYPE_LABELS[vehicle.type] || '—'}</td>
                     <td className="px-4 py-3 text-ink/70">{vehicle.plate || '—'}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={vehicle.status} />
@@ -184,11 +216,21 @@ export default function Vehicles() {
               })}
             </tbody>
           </table>
+          <Pagination page={currentPage} pageCount={pageCount} onChange={setPage} />
         </div>
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add vehicle" wide>
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+          <FormField label="Type">
+            <select className={inputClass} value={form.type} onChange={(e) => handleChange('type', e.target.value)}>
+              {Object.entries(VEHICLE_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </FormField>
           <FormField label="Make">
             <input required className={inputClass} value={form.make} onChange={(e) => handleChange('make', e.target.value)} />
           </FormField>

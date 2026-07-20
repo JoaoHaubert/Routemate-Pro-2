@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Copy, Check } from 'lucide-react'
 import { useData } from '../context/DataContext.jsx'
-import { clearAllStorage } from '../lib/storage.js'
 import { GROUP_COLOR_SWATCHES } from '../utils/format.js'
 
 const inputClass =
@@ -15,6 +14,7 @@ export default function Settings() {
   const [saved, setSaved] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupColor, setNewGroupColor] = useState(GROUP_COLOR_SWATCHES[0])
+  const [codeCopied, setCodeCopied] = useState(false)
 
   function handleAddGroup(e) {
     e.preventDefault()
@@ -153,22 +153,27 @@ export default function Settings() {
       </div>
 
       <div className="card p-5">
-        <h2 className="text-sm font-medium mb-1">Local data</h2>
+        <h2 className="text-sm font-medium mb-1">Driver access</h2>
         <p className="text-xs text-ink/50 mb-3">
-          Everything in this app is stored in your browser's local storage. Clearing it resets the app back to the
-          demo dataset — nothing is sent anywhere, since there's no backend wired up yet.
+          Share this fleet code with your drivers — they enter it when creating their account on the driver login
+          page to join your fleet.
         </p>
-        <button
-          onClick={() => {
-            if (confirm('Reset all data back to the demo dataset? This cannot be undone.')) {
-              clearAllStorage()
-              window.location.reload()
-            }
-          }}
-          className="text-sm text-alert-600 font-medium hover:underline"
-        >
-          Reset to demo data
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="meter text-lg font-semibold tracking-wide px-3 py-2 rounded-lg bg-surface border border-line">
+            {settings.fleetCode || '—'}
+          </span>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(settings.fleetCode || '')
+              setCodeCopied(true)
+              setTimeout(() => setCodeCopied(false), 1500)
+            }}
+            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-line hover:bg-surface"
+          >
+            {codeCopied ? <Check size={14} /> : <Copy size={14} />}
+            {codeCopied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
       </div>
     </div>
   )
