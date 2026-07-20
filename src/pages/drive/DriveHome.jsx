@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Fuel, Gauge } from 'lucide-react'
+import { Fuel, Gauge, Pencil } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useData } from '../../context/DataContext.jsx'
 import { computeIntervalCost, computeVehicleMetrics } from '../../lib/calculations.js'
@@ -31,6 +31,8 @@ function Onboarding({ myDriver, settings, addVehicle, updateDriver, reload }) {
   const [form, setForm] = useState({
     make: '',
     model: '',
+    year: new Date().getFullYear(),
+    plate: '',
     currentOdometer: '',
     purchasePrice: '',
     annualInsurance: '',
@@ -53,7 +55,8 @@ function Onboarding({ myDriver, settings, addVehicle, updateDriver, reload }) {
       type: 'taxi',
       make: form.make,
       model: form.model,
-      year: new Date().getFullYear(),
+      year: Number(form.year) || new Date().getFullYear(),
+      plate: form.plate,
       purchaseDate: new Date().toISOString().slice(0, 10),
       purchasePrice,
       residualValue,
@@ -87,6 +90,20 @@ function Onboarding({ myDriver, settings, addVehicle, updateDriver, reload }) {
         <label className="block">
           <span className="text-xs text-ink/50">Model</span>
           <input required className={inputClass} value={form.model} onChange={(e) => handleChange('model', e.target.value)} />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">Year</span>
+          <input
+            type="number"
+            required
+            className={inputClass}
+            value={form.year}
+            onChange={(e) => handleChange('year', e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">License plate</span>
+          <input className={inputClass} value={form.plate} onChange={(e) => handleChange('plate', e.target.value)} />
         </label>
         <label className="block">
           <span className="text-xs text-ink/50">Current odometer (km)</span>
@@ -147,17 +164,26 @@ function VehicleHome({ vehicle, driver, settings }) {
   const { costLogs, addCostLog, updateVehicle } = useData()
   const [logOpen, setLogOpen] = useState(false)
   const [odoOpen, setOdoOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [result, setResult] = useState(null)
 
   const metrics = computeVehicleMetrics(vehicle, costLogs)
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold">
-          {vehicle.make} {vehicle.model}
-        </h1>
-        <p className="text-sm text-ink/50 mt-0.5">{formatKm(vehicle.currentOdometer)} on the clock</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold">
+            {vehicle.make} {vehicle.model}
+          </h1>
+          <p className="text-sm text-ink/50 mt-0.5">{formatKm(vehicle.currentOdometer)} on the clock</p>
+        </div>
+        <button
+          onClick={() => setEditOpen(true)}
+          className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-line hover:bg-surface shrink-0"
+        >
+          <Pencil size={13} /> Edit details
+        </button>
       </div>
 
       <div className="card p-4 text-center">
@@ -199,12 +225,115 @@ function VehicleHome({ vehicle, driver, settings }) {
         onResult={setResult}
       />
       <ResultModal result={result} currency={settings.currency} onClose={() => setResult(null)} />
+      <EditVehicleModal open={editOpen} onClose={() => setEditOpen(false)} vehicle={vehicle} updateVehicle={updateVehicle} />
     </div>
   )
 }
 
+function EditVehicleModal({ open, onClose, vehicle, updateVehicle }) {
+  const [form, setForm] = useState(() => ({
+    make: vehicle.make,
+    model: vehicle.model,
+    year: vehicle.year,
+    plate: vehicle.plate || '',
+    purchasePrice: vehicle.purchasePrice,
+    annualInsurance: vehicle.annualInsurance,
+    annualTax: vehicle.annualTax,
+  }))
+  const [busy, setBusy] = useState(false)
+
+  function handleChange(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setBusy(true)
+    await updateVehicle(vehicle.id, {
+      make: form.make,
+      model: form.model,
+      year: Number(form.year) || vehicle.year,
+      plate: form.plate,
+      purchasePrice: Number(form.purchasePrice) || 0,
+      annualInsurance: Number(form.annualInsurance) || 0,
+      annualTax: Number(form.annualTax) || 0,
+    })
+    setBusy(false)
+    onClose()
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit vehicle details">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="text-xs text-ink/50">Make</span>
+          <input required className={inputClass} value={form.make} onChange={(e) => handleChange('make', e.target.value)} />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">Model</span>
+          <input required className={inputClass} value={form.model} onChange={(e) => handleChange('model', e.target.value)} />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">Year</span>
+          <input
+            type="number"
+            required
+            className={inputClass}
+            value={form.year}
+            onChange={(e) => handleChange('year', e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">License plate</span>
+          <input className={inputClass} value={form.plate} onChange={(e) => handleChange('plate', e.target.value)} />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">Price paid for the vehicle</span>
+          <input
+            type="number"
+            step="0.01"
+            required
+            className={inputClass}
+            value={form.purchasePrice}
+            onChange={(e) => handleChange('purchasePrice', e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">Annual insurance</span>
+          <input
+            type="number"
+            step="0.01"
+            required
+            className={inputClass}
+            value={form.annualInsurance}
+            onChange={(e) => handleChange('annualInsurance', e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">Annual tax</span>
+          <input
+            type="number"
+            step="0.01"
+            required
+            className={inputClass}
+            value={form.annualTax}
+            onChange={(e) => handleChange('annualTax', e.target.value)}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full px-4 py-3 text-sm rounded-lg bg-primary-600 text-white font-medium hover:bg-primary-700 disabled:opacity-60"
+        >
+          {busy ? 'Saving…' : 'Save changes'}
+        </button>
+      </form>
+    </Modal>
+  )
+}
+
 function LogCostModal({ open, onClose, vehicle, driver, addCostLog }) {
-  const [form, setForm] = useState({ category: 'fuel', amount: '', notes: '' })
+  const [form, setForm] = useState({ category: 'fuel', amount: '', odometer: '', notes: '' })
   const [busy, setBusy] = useState(false)
 
   async function handleSubmit(e) {
@@ -214,13 +343,13 @@ function LogCostModal({ open, onClose, vehicle, driver, addCostLog }) {
       vehicleId: vehicle.id,
       driverId: driver.id,
       date: new Date().toISOString().slice(0, 10),
-      odometer: vehicle.currentOdometer,
+      odometer: Number(form.odometer) || vehicle.currentOdometer,
       category: form.category,
       amount: Number(form.amount) || 0,
       notes: form.notes,
     })
     setBusy(false)
-    setForm({ category: 'fuel', amount: '', notes: '' })
+    setForm({ category: 'fuel', amount: '', odometer: '', notes: '' })
     onClose()
   }
 
@@ -250,6 +379,18 @@ function LogCostModal({ open, onClose, vehicle, driver, addCostLog }) {
             className={inputClass}
             value={form.amount}
             onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink/50">Current odometer (km)</span>
+          <input
+            type="number"
+            required
+            min={vehicle.currentOdometer}
+            placeholder={String(vehicle.currentOdometer)}
+            className={inputClass}
+            value={form.odometer}
+            onChange={(e) => setForm((p) => ({ ...p, odometer: e.target.value }))}
           />
         </label>
         <label className="block">
